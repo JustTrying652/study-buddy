@@ -53,7 +53,7 @@ or summarize notes using tool calls — built to learn the Vercel AI SDK
 
 - Add a `pdfUpload` tool + Supabase/local parsing (you've done PDF/OCR in
   StudyAI already — could reuse that pipeline here).
-- Persist chat history (currently in-memory only, resets on refresh).
+- Swap localStorage persistence for a real database (so history follows you across devices)
 - Add streaming reasoning display for a reasoning-capable Groq model.
 - Swap the model per-request (fast model for quick Q&A, bigger model for
   harder quiz generation).

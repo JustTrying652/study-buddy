@@ -2,60 +2,65 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { UIMessage } from "ai";
 
-type QuizOutput = {
-  topic: string;
-  difficulty: "easy" | "medium" | "hard";
-  instructions: string;
-};
+const STORAGE_KEY = "study-buddy:session";
 
-type SummaryOutput = {
-  keyPoints: string[];
-};
+type FlashcardOutput = { front: string; back: string };
+type QuizOutput = { question: string; options: string[]; correctIndex: number };
 
-function ToolCard({
-  toolName,
-  state,
-  output,
-}: {
-  toolName: string;
-  state: string;
-  output: unknown;
-}) {
-  if (toolName === "generateQuizQuestion") {
-    const o = output as QuizOutput | undefined;
-    return (
-      <div className="msg-enter -rotate-1 rounded-sm bg-[var(--highlight)] p-4 text-[var(--ink)] shadow-md max-w-sm border border-black/5">
-        <p className="font-hand text-2xl leading-none mb-1">Pop quiz!</p>
-        <p className="font-mono-note text-[11px] uppercase tracking-wide text-[var(--ink-soft)]">
-          {o ? `${o.topic} · ${o.difficulty}` : state === "input-streaming" ? "writing a question…" : "preparing…"}
-        </p>
+function Flashcard({ data }: { data: FlashcardOutput }) {
+  const [flipped, setFlipped] = useState(false);
+  return (
+    <button
+      onClick={() => setFlipped((f) => !f)}
+      className="msg-enter -rotate-1 rounded-sm bg-[var(--highlight)] p-4 text-left text-[var(--ink)] shadow-md max-w-sm border border-black/5"
+    >
+      <p className="font-mono-note text-[11px] uppercase tracking-wide text-[var(--ink-soft)] mb-1">
+        {flipped ? "answer" : "term \u00b7 tap to flip"}
+      </p>
+      <p className="font-hand text-2xl leading-snug">{flipped ? data.back : data.front}</p>
+    </button>
+  );
+}
+
+function QuizCard({ data }: { data: QuizOutput }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  return (
+    <div className="msg-enter rotate-1 rounded-sm bg-[var(--mint)]/20 border border-[var(--mint)] p-4 max-w-sm">
+      <p className="font-hand text-2xl leading-none mb-2 text-[#3d5c47]">Pop quiz</p>
+      <p className="text-sm mb-3 text-[var(--ink)]">{data.question}</p>
+      <div className="flex flex-col gap-1.5">
+        {data.options.map((opt, i) => {
+          const showState = picked !== null;
+          const isCorrect = i === data.correctIndex;
+          const isPicked = picked === i;
+          return (
+            <button
+              key={i}
+              disabled={showState}
+              onClick={() => setPicked(i)}
+              className={`text-left text-sm px-3 py-1.5 rounded border transition-colors ${
+                showState && isCorrect
+                  ? "bg-white border-[#3d5c47]"
+                  : showState && isPicked
+                    ? "bg-red-50 border-red-400"
+                    : "border-black/10 hover:bg-white/60"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
       </div>
-    );
-  }
-
-  if (toolName === "summarizeSection") {
-    const o = output as SummaryOutput | undefined;
-    return (
-      <div className="msg-enter rotate-1 rounded-sm bg-[var(--mint)]/25 border border-[var(--mint)] p-4 max-w-sm">
-        <p className="font-hand text-2xl leading-none mb-2 text-[#3d5c47]">
-          Key points
+      {picked !== null && (
+        <p className="mt-2 text-xs font-mono-note text-[var(--ink-soft)]">
+          {picked === data.correctIndex ? "correct." : "not quite \u2014 the highlighted one was it."}
         </p>
-        {o ? (
-          <ul className="text-sm space-y-1 list-disc list-inside text-[var(--ink)]">
-            {o.keyPoints.map((point, i) => (
-              <li key={i}>{point}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-[var(--ink-soft)]">summarizing…</p>
-        )}
-      </div>
-    );
-  }
-
-  return null;
+      )}
+    </div>
+  );
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
@@ -80,11 +85,12 @@ function MessageBubble({ message }: { message: UIMessage }) {
             );
           }
 
-          if (part.type === "tool-generateQuizQuestion" || part.type === "tool-summarizeSection") {
-            const toolName =
-              part.type === "tool-generateQuizQuestion" ? "generateQuizQuestion" : "summarizeSection";
-            const output = "output" in part && part.state === "output-available" ? part.output : undefined;
-            return <ToolCard key={i} toolName={toolName} state={part.state} output={output} />;
+          if (part.type === "tool-flashcard" && part.state === "output-available") {
+            return <Flashcard key={i} data={part.output as FlashcardOutput} />;
+          }
+
+          if (part.type === "tool-quiz" && part.state === "output-available") {
+            return <QuizCard key={i} data={part.output as QuizOutput} />;
           }
 
           return null;
@@ -95,9 +101,45 @@ function MessageBubble({ message }: { message: UIMessage }) {
 }
 
 export default function Home() {
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, setMessages, status } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+  });
   const [input, setInput] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Load any saved session once, after mount (avoids SSR/client mismatch).
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as UIMessage[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Could not load saved study session", e);
+    } finally {
+      setHydrated(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every change, once we're past the initial hydration read.
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (messages.length > 0) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+      } else {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) {
+      console.error("Could not save study session", e);
+    }
+  }, [messages, hydrated]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,13 +155,28 @@ export default function Home() {
     setInput("");
   }
 
+  function handleClear() {
+    if (messages.length === 0) return;
+    if (!window.confirm("Clear this study session? Your flashcards and history will be lost.")) return;
+    setMessages([]);
+    window.localStorage.removeItem(STORAGE_KEY);
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b border-[var(--paper-line)] px-6 py-4 flex items-baseline gap-3">
         <h1 className="font-hand text-4xl text-[var(--accent)]">Study Buddy</h1>
         <p className="text-sm text-[var(--ink-soft)] font-mono-note">
-          explains · quizzes · streams in real time
+          explains \u00b7 quizzes \u00b7 remembers where you left off
         </p>
+        {messages.length > 0 && (
+          <button
+            onClick={handleClear}
+            className="ml-auto text-xs font-mono-note uppercase tracking-wide text-[var(--ink-soft)] hover:text-[var(--accent)] underline underline-offset-2"
+          >
+            clear session
+          </button>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto px-6 py-6">
@@ -141,7 +198,7 @@ export default function Home() {
           {isBusy && (
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-sm bg-[var(--card-bg)] border border-[var(--paper-line)] px-4 py-2.5 text-[var(--ink-soft)] text-sm">
-                thinking…
+                thinking\u2026
               </div>
             </div>
           )}
@@ -154,7 +211,7 @@ export default function Home() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Explain recursion to me like I'm new to it…"
+            placeholder="Explain recursion to me like I'm new to it\u2026"
             className="flex-1 rounded-full bg-[var(--card-bg)] border border-[var(--paper-line)] px-5 py-3 text-[15px] text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
           />
           <button

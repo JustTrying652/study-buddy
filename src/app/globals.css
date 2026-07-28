@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f7f2e7;
+  --paper-line: #d9d0b8;
+  --margin-line: #c98a7a;
+  --ink: #2b2a28;
+  --ink-soft: #6b675c;
+  --accent: #2f5d8a;
+  --accent-soft: #a9c4dd;
+  --highlight: #f2cf5b;
+  --mint: #86ad93;
+  --card-bg: #fffdf7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 31px,
+      var(--paper-line) 32px
+    ),
+    linear-gradient(to right, transparent 68px, var(--margin-line) 69px, transparent 70px);
+  background-attachment: local, local;
+}
+
+.font-hand {
+  font-family: var(--font-hand), cursive;
+}
+
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.font-mono-note {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--paper-line);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msg-enter {
+  animation: note-in 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-enter {
+    animation: none;
+  }
+}

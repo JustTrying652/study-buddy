@@ -1,8 +1,3 @@
-// A small in-memory rate limiter. Good enough for a solo/local dev project
-// running as a single Node process. It will NOT work correctly across
-// multiple serverless instances (e.g. Vercel spins up separate processes
-// that don't share this Map) — for that you'd want a shared store like
-// Upstash Redis. Fine for now; documented as a known limitation.
 
 type Bucket = { count: number; resetAt: number };
 

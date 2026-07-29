@@ -101,7 +101,7 @@ function MessageBubble({ message }: { message: UIMessage }) {
 }
 
 export default function Home() {
-  const { messages, sendMessage, setMessages, status } = useChat({
+  const { messages, sendMessage, setMessages, status, error, clearError, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
@@ -146,6 +146,7 @@ export default function Home() {
   }, [messages]);
 
   const isBusy = status === "submitted" || status === "streaming";
+  
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -205,6 +206,29 @@ export default function Home() {
           <div ref={bottomRef} />
         </div>
       </main>
+
+      {error && (
+  <div className="mx-auto w-full max-w-2xl px-6">
+    <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm text-red-800">
+      <span>{error.message || "Something went wrong. Please try again."}</span>
+      <div className="flex shrink-0 gap-3">
+        <button
+          onClick={() => regenerate()}
+          className="font-medium underline underline-offset-2 hover:no-underline"
+        >
+          Retry
+        </button>
+        <button
+          onClick={() => clearError()}
+          className="text-red-500 hover:text-red-700"
+          aria-label="Dismiss error"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <form onSubmit={handleSubmit} className="border-t border-[var(--paper-line)] px-6 py-4">
         <div className="mx-auto max-w-2xl flex gap-3">

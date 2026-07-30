@@ -110,19 +110,34 @@ export function ChatPanel({
   onMessagesChange: (messages: UIMessage[]) => void;
   onOpenSidebar: () => void;
 }) {
+  // Capture the initial messages once — after that, useChat owns the
+  // conversation and we never want a changing prop to re-seed it.
+  const [initial] = useState(initialMessages);
+
   const { messages, sendMessage, status, error, clearError, regenerate } = useChat({
     id: sessionId,
-    messages: initialMessages,
+    messages: initial,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Keep the latest messages/callback in refs so the effect below can
+  // read them without needing them as dependencies — that's what was
+  // causing the update loop.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const onMessagesChangeRef = useRef(onMessagesChange);
+  onMessagesChangeRef.current = onMessagesChange;
+
+  // Only persist at the end of a turn (or on error), not on every
+  // streamed token.
   useEffect(() => {
-    onMessagesChange(messages);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+    if (status === "ready" || status === "error") {
+      onMessagesChangeRef.current(messagesRef.current);
+    }
+  }, [status]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -19,7 +19,7 @@ const components: Components = {
     <h3 className="font-display text-base font-medium mt-2 mb-1 first:mt-0">{children}</h3>
   ),
   a: ({ children, href }) => (
-    
+    <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"

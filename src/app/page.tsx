@@ -101,6 +101,10 @@ export default function Home() {
   }
 
   const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
+  const handleActiveMessagesChange = useCallback(
+    (messages: UIMessage[]) => handleMessagesChange(activeSession.id, messages),
+    [activeSession.id]
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -117,7 +121,7 @@ export default function Home() {
         key={activeSession.id}
         sessionId={activeSession.id}
         initialMessages={activeSession.messages}
-        onMessagesChange={(messages) => handleMessagesChange(activeSession.id, messages)}
+        onMessagesChange={handleActiveMessagesChange}
         onOpenSidebar={() => setSidebarOpen(true)}
       />
     </div>

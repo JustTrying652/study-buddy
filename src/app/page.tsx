@@ -1,252 +1,125 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { useEffect, useState } from "react";
 import type { UIMessage } from "ai";
-
-const STORAGE_KEY = "study-buddy:session";
-
-type FlashcardOutput = { front: string; back: string };
-type QuizOutput = { question: string; options: string[]; correctIndex: number };
-
-function Flashcard({ data }: { data: FlashcardOutput }) {
-  const [flipped, setFlipped] = useState(false);
-  return (
-    <button
-      onClick={() => setFlipped((f) => !f)}
-      className="msg-enter -rotate-1 rounded-sm bg-[var(--highlight)] p-4 text-left text-[var(--ink)] shadow-md max-w-sm border border-black/5"
-    >
-      <p className="font-mono-note text-[11px] uppercase tracking-wide text-[var(--ink-soft)] mb-1">
-        {flipped ? "answer" : "term \u00b7 tap to flip"}
-      </p>
-      <p className="font-hand text-2xl leading-snug">{flipped ? data.back : data.front}</p>
-    </button>
-  );
-}
-
-function QuizCard({ data }: { data: QuizOutput }) {
-  const [picked, setPicked] = useState<number | null>(null);
-  return (
-    <div className="msg-enter rotate-1 rounded-sm bg-[var(--mint)]/20 border border-[var(--mint)] p-4 max-w-sm">
-      <p className="font-hand text-2xl leading-none mb-2 text-[#3d5c47]">Pop quiz</p>
-      <p className="text-sm mb-3 text-[var(--ink)]">{data.question}</p>
-      <div className="flex flex-col gap-1.5">
-        {data.options.map((opt, i) => {
-          const showState = picked !== null;
-          const isCorrect = i === data.correctIndex;
-          const isPicked = picked === i;
-          return (
-            <button
-              key={i}
-              disabled={showState}
-              onClick={() => setPicked(i)}
-              className={`text-left text-sm px-3 py-1.5 rounded border transition-colors ${
-                showState && isCorrect
-                  ? "bg-white border-[#3d5c47]"
-                  : showState && isPicked
-                    ? "bg-red-50 border-red-400"
-                    : "border-black/10 hover:bg-white/60"
-              }`}
-            >
-              {opt}
-            </button>
-          );
-        })}
-      </div>
-      {picked !== null && (
-        <p className="mt-2 text-xs font-mono-note text-[var(--ink-soft)]">
-          {picked === data.correctIndex ? "correct." : "not quite \u2014 the highlighted one was it."}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: UIMessage }) {
-  const isUser = message.role === "user";
-
-  return (
-    <div className={`msg-enter flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`flex flex-col gap-2 max-w-[80%] ${isUser ? "items-end" : "items-start"}`}>
-        {message.parts.map((part, i) => {
-          if (part.type === "text") {
-            return (
-              <div
-                key={i}
-                className={`rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap ${
-                  isUser
-                    ? "bg-[var(--accent)] text-white rounded-br-sm"
-                    : "bg-[var(--card-bg)] text-[var(--ink)] rounded-bl-sm border border-[var(--paper-line)]"
-                }`}
-              >
-                {part.text}
-              </div>
-            );
-          }
-
-          if (part.type === "tool-flashcard" && part.state === "output-available") {
-            return <Flashcard key={i} data={part.output as FlashcardOutput} />;
-          }
-
-          if (part.type === "tool-quiz" && part.state === "output-available") {
-            return <QuizCard key={i} data={part.output as QuizOutput} />;
-          }
-
-          return null;
-        })}
-      </div>
-    </div>
-  );
-}
+import { Sidebar } from "@/components/Sidebar";
+import { ChatPanel } from "@/components/ChatPanel";
+import {
+  type StudySession,
+  loadSessions,
+  saveSessions,
+  loadActiveId,
+  saveActiveId,
+  makeSession,
+  titleFromMessages,
+} from "@/lib/sessions";
 
 export default function Home() {
-  const { messages, sendMessage, setMessages, status, error, clearError, regenerate } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-  });
-  const [input, setInput] = useState("");
-  const [hydrated, setHydrated] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [activeId, setActiveId] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Load any saved session once, after mount (avoids SSR/client mismatch).
+  // Load everything once, client-side only, after the first paint —
+  // avoids an SSR/client markup mismatch since localStorage doesn't
+  // exist on the server. This one-time hydration read is a legitimate
+  // exception to the "don't setState in an effect" rule below.
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as UIMessage[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-        }
-      }
-    } catch (e) {
-      console.error("Could not load saved study session", e);
-    } finally {
-      setHydrated(true);
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const stored = loadSessions();
+    const storedActive = loadActiveId();
+
+    if (stored.length === 0) {
+      const first = makeSession();
+      setSessions([first]);
+      setActiveId(first.id);
+      saveSessions([first]);
+      saveActiveId(first.id);
+    } else {
+      setSessions(stored);
+      const validActive = stored.some((s) => s.id === storedActive);
+      setActiveId(validActive ? storedActive! : stored[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setMounted(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  // Persist on every change, once we're past the initial hydration read.
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      if (messages.length > 0) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-      } else {
-        window.localStorage.removeItem(STORAGE_KEY);
+  function handleMessagesChange(sessionId: string, messages: UIMessage[]) {
+    setSessions((prev) => {
+      const next = prev.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              messages,
+              title: titleFromMessages(messages) ?? s.title,
+              updatedAt: Date.now(),
+            }
+          : s
+      );
+      saveSessions(next);
+      return next;
+    });
+  }
+
+  function handleNew() {
+    const fresh = makeSession();
+    setSessions((prev) => {
+      const next = [fresh, ...prev];
+      saveSessions(next);
+      return next;
+    });
+    setActiveId(fresh.id);
+    saveActiveId(fresh.id);
+    setSidebarOpen(false);
+  }
+
+  function handleSelect(id: string) {
+    setActiveId(id);
+    saveActiveId(id);
+    setSidebarOpen(false);
+  }
+
+  function handleDelete(id: string) {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      const finalList = next.length > 0 ? next : [makeSession()];
+      saveSessions(finalList);
+
+      if (id === activeId) {
+        const nextActive = finalList[0].id;
+        setActiveId(nextActive);
+        saveActiveId(nextActive);
       }
-    } catch (e) {
-      console.error("Could not save study session", e);
-    }
-  }, [messages, hydrated]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const isBusy = status === "submitted" || status === "streaming";
-  
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isBusy) return;
-    sendMessage({ text: trimmed });
-    setInput("");
+      return finalList;
+    });
   }
 
-  function handleClear() {
-    if (messages.length === 0) return;
-    if (!window.confirm("Clear this study session? Your flashcards and history will be lost.")) return;
-    setMessages([]);
-    window.localStorage.removeItem(STORAGE_KEY);
+  if (!mounted) {
+    // Matches what a brand-new visitor sees, so there's nothing for
+    // hydration to mismatch against once localStorage kicks in above.
+    return <div className="flex h-screen" />;
   }
+
+  const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="border-b border-[var(--paper-line)] px-6 py-4 flex items-baseline gap-3">
-        <h1 className="font-hand text-4xl text-[var(--accent)]">Study Buddy</h1>
-        <p className="text-sm text-[var(--ink-soft)] font-mono-note">
-          explains \u00b7 quizzes \u00b7 remembers where you left off
-        </p>
-        {messages.length > 0 && (
-          <button
-            onClick={handleClear}
-            className="ml-auto text-xs font-mono-note uppercase tracking-wide text-[var(--ink-soft)] hover:text-[var(--accent)] underline underline-offset-2"
-          >
-            clear session
-          </button>
-        )}
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-2xl flex flex-col gap-4">
-          {messages.length === 0 && (
-            <div className="text-center py-20">
-              <p className="font-hand text-3xl text-[var(--accent)] mb-2">
-                Fresh page. What are we studying?
-              </p>
-              <p className="text-sm text-[var(--ink-soft)]">
-                Paste your notes, ask for a concept to be explained, or say &ldquo;quiz me on
-                &lt;topic&gt;&rdquo;.
-              </p>
-            </div>
-          )}
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {isBusy && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-[var(--card-bg)] border border-[var(--paper-line)] px-4 py-2.5 text-[var(--ink-soft)] text-sm">
-                thinking\u2026
-              </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-      </main>
-
-      {error && (
-  <div className="mx-auto w-full max-w-2xl px-6">
-    <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm text-red-800">
-      <span>{error.message || "Something went wrong. Please try again."}</span>
-      <div className="flex shrink-0 gap-3">
-        <button
-          onClick={() => regenerate()}
-          className="font-medium underline underline-offset-2 hover:no-underline"
-        >
-          Retry
-        </button>
-        <button
-          onClick={() => clearError()}
-          className="text-red-500 hover:text-red-700"
-          aria-label="Dismiss error"
-        >
-          ✕
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-      <form onSubmit={handleSubmit} className="border-t border-[var(--paper-line)] px-6 py-4">
-        <div className="mx-auto max-w-2xl flex gap-3">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Explain recursion to me like I'm new to it\u2026"
-            className="flex-1 rounded-full bg-[var(--card-bg)] border border-[var(--paper-line)] px-5 py-3 text-[15px] text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
-          />
-          <button
-            type="submit"
-            disabled={isBusy || !input.trim()}
-            className="rounded-full bg-[var(--accent)] px-6 py-3 font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        </div>
-      </form>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar
+        sessions={sessions}
+        activeId={activeSession.id}
+        onSelect={handleSelect}
+        onNew={handleNew}
+        onDelete={handleDelete}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <ChatPanel
+        key={activeSession.id}
+        sessionId={activeSession.id}
+        initialMessages={activeSession.messages}
+        onMessagesChange={(messages) => handleMessagesChange(activeSession.id, messages)}
+        onOpenSidebar={() => setSidebarOpen(true)}
+      />
     </div>
   );
 }

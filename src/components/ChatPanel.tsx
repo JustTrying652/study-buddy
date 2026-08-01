@@ -73,10 +73,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
             return (
               <div
                 key={i}
-                className={`rounded-2xl px-4 py-2.5 ${
+                className={`rounded-2xl ${
                   isUser
-                    ? "bg-[var(--accent)] text-white rounded-br-sm text-[15px] leading-relaxed whitespace-pre-wrap"
-                    : "bg-[var(--card-bg)] text-[var(--ink)] rounded-bl-sm border border-[var(--paper-line)]"
+                    ? "bg-[var(--accent)] text-white rounded-br-sm px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
+                    : "bg-[var(--card-bg)] text-[var(--ink)] rounded-bl-sm border border-[var(--paper-line)] px-4 py-3"
                 }`}
               >
                 {isUser ? part.text : <Markdown text={part.text} />}

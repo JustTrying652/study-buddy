@@ -10,13 +10,13 @@ const components: Components = {
   ol: ({ children }) => <ol className="mb-2 ml-5 list-decimal space-y-1 last:mb-0">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   h1: ({ children }) => (
-    <h1 className="font-display text-lg font-medium mt-3 mb-1.5 first:mt-0">{children}</h1>
+    <h1 className="font-display text-base font-semibold mt-2.5 mb-1 first:mt-0">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-display text-base font-medium mt-3 mb-1.5 first:mt-0">{children}</h2>
+    <h2 className="font-display text-[15px] font-semibold mt-2.5 mb-1 first:mt-0">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-display text-base font-medium mt-2 mb-1 first:mt-0">{children}</h3>
+    <h3 className="text-[15px] font-semibold mt-2 mb-1 first:mt-0">{children}</h3>
   ),
   a: ({ children, href }) => (
     <a

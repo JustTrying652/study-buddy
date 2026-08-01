@@ -113,4 +113,8 @@ body {
   .msg-enter {
     animation: none;
   }
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
 }

@@ -155,20 +155,18 @@ export function ChatPanel({
 
   return (
     <div className="flex h-screen flex-1 flex-col min-w-0">
-      <header className="flex items-center gap-3 border-b border-[var(--paper-line)] px-4 py-3 sm:px-6 sm:py-4">
+      <header className="flex items-center gap-2 border-b border-[var(--paper-line)] px-3 py-3 sm:px-6 sm:py-4">
         <button
           onClick={onOpenSidebar}
-          className="text-[var(--ink-soft)] hover:text-[var(--ink)] sm:hidden"
+          className="shrink-0 rounded-md p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-black/[0.05] hover:text-[var(--ink)] sm:hidden"
           aria-label="Open sessions"
         >
           ☰
         </button>
-        <div className="flex items-baseline gap-3 min-w-0">
-          <h1 className="font-hand text-3xl sm:text-4xl text-[var(--accent)] shrink-0">
-            Study Buddy
-          </h1>
-          <p className="hidden text-sm text-[var(--ink-soft)] font-mono-note truncate sm:block">
-            explains · quizzes · remembers where you left off
+        <div className="flex min-w-0 flex-col justify-center">
+          <h1 className="font-hand text-3xl leading-none text-[var(--accent)]">Study Buddy</h1>
+          <p className="mt-1 hidden truncate text-sm text-[var(--ink-soft)] sm:block">
+            Explains concepts, quizzes you, and remembers where you left off.
           </p>
         </div>
       </header>

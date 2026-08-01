@@ -124,15 +124,15 @@ export function ChatPanel({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Keep the latest messages/callback in refs so the effect below can
-  // read them without needing them as dependencies — that's what was
-  // causing the update loop.
+  // read them without needing them as dependencies — avoids an update loop.
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
   const onMessagesChangeRef = useRef(onMessagesChange);
-  onMessagesChangeRef.current = onMessagesChange;
+  useEffect(() => {
+    messagesRef.current = messages;
+    onMessagesChangeRef.current = onMessagesChange;
+  });
 
-  // Only persist at the end of a turn (or on error), not on every
-  // streamed token.
+  // Only persist at the end of a turn (or on error), not on every streamed token.
   useEffect(() => {
     if (status === "ready" || status === "error") {
       onMessagesChangeRef.current(messagesRef.current);

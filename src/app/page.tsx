@@ -44,22 +44,30 @@ export default function Home() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  function handleMessagesChange(sessionId: string, messages: UIMessage[]) {
-    setSessions((prev) => {
-      const next = prev.map((s) =>
-        s.id === sessionId
-          ? {
-              ...s,
-              messages,
-              title: titleFromMessages(messages) ?? s.title,
-              updatedAt: Date.now(),
-            }
-          : s
-      );
-      saveSessions(next);
-      return next;
-    });
-  }
+  const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
+  const activeSessionId = activeSession?.id ?? "";
+
+  // Declared before any early return, and before it's actually used,
+  // so hook order stays identical across every render.
+  const handleActiveMessagesChange = useCallback(
+    (messages: UIMessage[]) => {
+      setSessions((prev) => {
+        const next = prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                messages,
+                title: titleFromMessages(messages) ?? s.title,
+                updatedAt: Date.now(),
+              }
+            : s
+        );
+        saveSessions(next);
+        return next;
+      });
+    },
+    [activeSessionId]
+  );
 
   function handleNew() {
     const fresh = makeSession();
@@ -94,17 +102,11 @@ export default function Home() {
     });
   }
 
-  if (!mounted) {
+  if (!mounted || !activeSession) {
     // Matches what a brand-new visitor sees, so there's nothing for
     // hydration to mismatch against once localStorage kicks in above.
     return <div className="flex h-screen" />;
   }
-
-  const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
-  const handleActiveMessagesChange = useCallback(
-    (messages: UIMessage[]) => handleMessagesChange(activeSession.id, messages),
-    [activeSession.id]
-  );
 
   return (
     <div className="flex h-screen overflow-hidden">

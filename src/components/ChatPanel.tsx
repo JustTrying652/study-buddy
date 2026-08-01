@@ -189,8 +189,10 @@ export function ChatPanel({
           ))}
           {isBusy && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-[var(--card-bg)] border border-[var(--paper-line)] px-4 py-2.5 text-[var(--ink-soft)] text-sm">
-                thinking…
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-[var(--paper-line)] bg-[var(--card-bg)] px-4 py-3">
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
               </div>
             </div>
           )}

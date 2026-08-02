@@ -10,6 +10,8 @@ export function Sidebar({
   onDelete,
   open,
   onClose,
+  userEmail,
+  onSignOut,
 }: {
   sessions: StudySession[];
   activeId: string;
@@ -18,12 +20,13 @@ export function Sidebar({
   onDelete: (id: string) => void;
   open: boolean;
   onClose: () => void;
+  userEmail: string | null;
+  onSignOut: () => void;
 }) {
   const ordered = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
     <>
-      {/* mobile scrim, only visible when the sidebar is open as an overlay */}
       {open && (
         <div
           className="fixed inset-0 z-20 bg-black/30 sm:hidden"
@@ -89,6 +92,20 @@ export function Sidebar({
             </div>
           ))}
         </nav>
+
+        {userEmail && (
+          <div className="flex items-center justify-between gap-2 border-t border-[var(--paper-line)] px-3 py-3">
+            <span className="min-w-0 truncate text-xs text-[var(--ink-soft)]" title={userEmail}>
+              {userEmail}
+            </span>
+            <button
+              onClick={onSignOut}
+              className="shrink-0 text-xs font-medium text-[var(--ink-soft)] underline underline-offset-2 hover:text-[var(--accent)]"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { UIMessage } from "ai";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatPanel } from "@/components/ChatPanel";
+import { createClient } from "@/lib/supabase/client";
 import {
   type StudySession,
   loadSessions,
@@ -19,11 +20,23 @@ export default function Home() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Load everything once, client-side only, after the first paint —
-  // avoids an SSR/client markup mismatch since localStorage doesn't
-  // exist on the server. This one-time hydration read is a legitimate
-  // exception to the "don't setState in an effect" rule below.
+  // Sessions are proxy-gated, so a user always exists here — this just
+  // fetches the email for display and wires up sign-out.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     const stored = loadSessions();
@@ -47,8 +60,6 @@ export default function Home() {
   const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
   const activeSessionId = activeSession?.id ?? "";
 
-  // Declared before any early return, and before it's actually used,
-  // so hook order stays identical across every render.
   const handleActiveMessagesChange = useCallback(
     (messages: UIMessage[]) => {
       setSessions((prev) => {
@@ -103,8 +114,6 @@ export default function Home() {
   }
 
   if (!mounted || !activeSession) {
-    // Matches what a brand-new visitor sees, so there's nothing for
-    // hydration to mismatch against once localStorage kicks in above.
     return <div className="flex h-screen" />;
   }
 
@@ -118,6 +127,8 @@ export default function Home() {
         onDelete={handleDelete}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        userEmail={userEmail}
+        onSignOut={handleSignOut}
       />
       <ChatPanel
         key={activeSession.id}

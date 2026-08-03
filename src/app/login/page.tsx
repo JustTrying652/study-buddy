@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm text-center">
         <h1 className="font-hand text-5xl text-[var(--accent)] mb-2">Study Buddy</h1>
         <p className="text-sm text-[var(--ink-soft)] mb-8">
-          Sign in with your email — no password needed.
+          Sign in with your email — no password .
         </p>
 
         {status === "sent" ? (

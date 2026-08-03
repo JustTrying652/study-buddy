@@ -47,7 +47,7 @@ export default function LoginPage() {
               Check <span className="font-medium">{email}</span> for a sign-in link.
             </p>
             <p className="mt-2 text-xs text-[var(--ink-soft)]">
-              It may take a minute to arrive — check spam .
+              It may take a minute to arrive — check spam too.
             </p>
           </div>
         ) : (

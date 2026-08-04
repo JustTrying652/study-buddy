@@ -1,4 +1,5 @@
 import type { UIMessage } from "ai";
+import { createClient } from "@/lib/supabase/client";
 
 export type StudySession = {
   id: string;
@@ -7,52 +8,78 @@ export type StudySession = {
   updatedAt: number;
 };
 
-const SESSIONS_KEY = "study-buddy:sessions-v2";
-const ACTIVE_KEY = "study-buddy:active-session-v2";
+type SessionRow = {
+  id: string;
+  title: string;
+  messages: unknown;
+  updated_at: string;
+};
 
-export function loadSessions(): StudySession[] {
-  try {
-    const raw = window.localStorage.getItem(SESSIONS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.error("Could not load study sessions", e);
+function rowToSession(row: SessionRow): StudySession {
+  return {
+    id: row.id,
+    title: row.title,
+    messages: Array.isArray(row.messages) ? (row.messages as UIMessage[]) : [],
+    updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+export async function loadSessions(): Promise<StudySession[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("study_sessions")
+    .select("id, title, messages, updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("Could not load study sessions", error);
     return [];
   }
+  return (data ?? []).map(rowToSession);
 }
 
-export function saveSessions(sessions: StudySession[]) {
-  try {
-    window.localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-  } catch (e) {
-    console.error("Could not save study sessions", e);
-  }
-}
+export async function createSession(): Promise<StudySession | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
 
-export function loadActiveId(): string | null {
-  try {
-    return window.localStorage.getItem(ACTIVE_KEY);
-  } catch {
+  const { data, error } = await supabase
+    .from("study_sessions")
+    .insert({ user_id: user.id, title: "New chat", messages: [] })
+    .select("id, title, messages, updated_at")
+    .single();
+
+  if (error || !data) {
+    console.error("Could not create session", error);
     return null;
   }
+  return rowToSession(data);
 }
 
-export function saveActiveId(id: string) {
-  try {
-    window.localStorage.setItem(ACTIVE_KEY, id);
-  } catch (e) {
-    console.error("Could not save active session id", e);
+export async function updateSessionMessages(
+  id: string,
+  messages: UIMessage[],
+  title: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("study_sessions")
+    .update({ messages, title, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Could not save session", error);
   }
 }
 
-export function makeSession(): StudySession {
-  return {
-    id: crypto.randomUUID(),
-    title: "New chat",
-    messages: [],
-    updatedAt: Date.now(),
-  };
+export async function deleteSession(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("study_sessions").delete().eq("id", id);
+  if (error) {
+    console.error("Could not delete session", error);
+  }
 }
 
 // Derive a short title from the first user message once the chat has content.

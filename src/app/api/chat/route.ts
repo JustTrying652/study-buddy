@@ -8,6 +8,7 @@ import {
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { createClient } from "@/lib/supabase/server";
 import {
   extractDocxText,
   extractPdfText,
@@ -114,12 +115,19 @@ export async function POST(req: Request) {
     );
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "local";
+  // proxy.ts already blocks unauthenticated requests, but every route that
+  // touches user data should verify identity itself rather than trust an
+  // upstream layer alone.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { allowed, resetAt } = checkRateLimit(ip);
+  if (!user) {
+    return jsonError("Not signed in.", 401);
+  }
+
+  const { allowed, resetAt } = await checkRateLimit(supabase, user.id);
   if (!allowed) {
     const secondsLeft = Math.ceil((resetAt - Date.now()) / 1000);
     return jsonError(

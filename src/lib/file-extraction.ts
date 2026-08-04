@@ -18,13 +18,9 @@ function dataUrlToBuffer(url: string): Buffer {
 
 export async function extractPdfText(dataUrl: string): Promise<string> {
   const buffer = dataUrlToBuffer(dataUrl);
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    return truncate(result.text);
-  } finally {
-    await parser.destroy();
-  }
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
+  return truncate(text);
 }
 
 export async function extractDocxText(dataUrl: string): Promise<string> {

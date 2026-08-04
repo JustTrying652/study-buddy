@@ -8,22 +8,19 @@ import { createClient } from "@/lib/supabase/client";
 import {
   type StudySession,
   loadSessions,
-  saveSessions,
-  loadActiveId,
-  saveActiveId,
-  makeSession,
+  createSession,
+  updateSessionMessages,
+  deleteSession,
   titleFromMessages,
 } from "@/lib/sessions";
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Sessions are proxy-gated, so a user always exists here — this just
-  // fetches the email for display and wires up sign-out.
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
@@ -37,24 +34,31 @@ export default function Home() {
     window.location.href = "/login";
   }
 
+  // Load the user's sessions from the database once, on mount.
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    const stored = loadSessions();
-    const storedActive = loadActiveId();
+    let cancelled = false;
 
-    if (stored.length === 0) {
-      const first = makeSession();
-      setSessions([first]);
-      setActiveId(first.id);
-      saveSessions([first]);
-      saveActiveId(first.id);
-    } else {
-      setSessions(stored);
-      const validActive = stored.some((s) => s.id === storedActive);
-      setActiveId(validActive ? storedActive! : stored[0].id);
-    }
-    setMounted(true);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    (async () => {
+      const stored = await loadSessions();
+      if (cancelled) return;
+
+      if (stored.length === 0) {
+        const fresh = await createSession();
+        if (cancelled) return;
+        if (fresh) {
+          setSessions([fresh]);
+          setActiveId(fresh.id);
+        }
+      } else {
+        setSessions(stored);
+        setActiveId(stored[0].id);
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
@@ -62,59 +66,53 @@ export default function Home() {
 
   const handleActiveMessagesChange = useCallback(
     (messages: UIMessage[]) => {
-      setSessions((prev) => {
-        const next = prev.map((s) =>
+      const title = titleFromMessages(messages);
+      setSessions((prev) =>
+        prev.map((s) =>
           s.id === activeSessionId
-            ? {
-                ...s,
-                messages,
-                title: titleFromMessages(messages) ?? s.title,
-                updatedAt: Date.now(),
-              }
+            ? { ...s, messages, title: title ?? s.title, updatedAt: Date.now() }
             : s
-        );
-        saveSessions(next);
-        return next;
-      });
+        )
+      );
+      updateSessionMessages(activeSessionId, messages, title ?? "New chat");
     },
     [activeSessionId]
   );
 
-  function handleNew() {
-    const fresh = makeSession();
-    setSessions((prev) => {
-      const next = [fresh, ...prev];
-      saveSessions(next);
-      return next;
-    });
+  async function handleNew() {
+    const fresh = await createSession();
+    if (!fresh) return;
+    setSessions((prev) => [fresh, ...prev]);
     setActiveId(fresh.id);
-    saveActiveId(fresh.id);
     setSidebarOpen(false);
   }
 
   function handleSelect(id: string) {
     setActiveId(id);
-    saveActiveId(id);
     setSidebarOpen(false);
   }
 
-  function handleDelete(id: string) {
-    setSessions((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      const finalList = next.length > 0 ? next : [makeSession()];
-      saveSessions(finalList);
+  async function handleDelete(id: string) {
+    const remaining = sessions.filter((s) => s.id !== id);
 
-      if (id === activeId) {
-        const nextActive = finalList[0].id;
-        setActiveId(nextActive);
-        saveActiveId(nextActive);
-      }
-      return finalList;
-    });
+    if (remaining.length === 0) {
+      const fresh = await createSession();
+      setSessions(fresh ? [fresh] : []);
+      if (fresh) setActiveId(fresh.id);
+    } else {
+      setSessions(remaining);
+      if (id === activeId) setActiveId(remaining[0].id);
+    }
+
+    deleteSession(id);
   }
 
-  if (!mounted || !activeSession) {
-    return <div className="flex h-screen" />;
+  if (loading || !activeSession) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-sm text-[var(--ink-soft)]">Loading your notebook…</p>
+      </div>
+    );
   }
 
   return (

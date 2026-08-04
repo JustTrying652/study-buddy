@@ -1,38 +1,30 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Bucket = { count: number; resetAt: number };
+const WINDOW_SECONDS = 10 * 60; // 10 minutes
+const MAX_REQUESTS = 20; // per window, per user
 
-const buckets = new Map<string, Bucket>();
+// Calls a Postgres function that atomically checks-and-increments a
+// per-user counter, so concurrent requests can't race past the limit
+// the way a read-then-write from the server could.
+export async function checkRateLimit(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ allowed: boolean; resetAt: number }> {
+  const { data, error } = await supabase
+    .rpc("check_rate_limit", {
+      p_user_id: userId,
+      p_limit: MAX_REQUESTS,
+      p_window_seconds: WINDOW_SECONDS,
+    })
+    .single();
 
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_REQUESTS = 20; // per window, per IP
-
-export function checkRateLimit(key: string): {
-  allowed: boolean;
-  remaining: number;
-  resetAt: number;
-} {
-  const now = Date.now();
-  const existing = buckets.get(key);
-
-  if (!existing || existing.resetAt <= now) {
-    const resetAt = now + WINDOW_MS;
-    buckets.set(key, { count: 1, resetAt });
-    return { allowed: true, remaining: MAX_REQUESTS - 1, resetAt };
+  if (error || !data) {
+    // If the rate-limit check itself fails, fail open — a broken limiter
+    // shouldn't take down the whole app. Logged so it's visible.
+    console.error("Rate limit check failed:", error);
+    return { allowed: true, resetAt: Date.now() };
   }
 
-  if (existing.count >= MAX_REQUESTS) {
-    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
-  }
-
-  existing.count += 1;
-  return { allowed: true, remaining: MAX_REQUESTS - existing.count, resetAt: existing.resetAt };
+  const row = data as { allowed: boolean; reset_at: string };
+  return { allowed: row.allowed === true, resetAt: new Date(row.reset_at).getTime() };
 }
-
-// Periodically clear out stale buckets so the Map doesn't grow forever
-// in a long-running dev server.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
-}, WINDOW_MS).unref?.();

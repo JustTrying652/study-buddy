@@ -21,10 +21,18 @@ export default function LoginPage() {
       email: trimmed,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        shouldCreateUser: false,
       },
     });
 
     if (error) {
+      if (error.message.toLowerCase().includes("signups not allowed")) {
+        setStatus("error");
+        setErrorMessage(
+          "That email hasn't been invited yet. Ask Evans to add you, then try again."
+        );
+        return;
+      }
       setStatus("error");
       setErrorMessage(error.message);
       return;

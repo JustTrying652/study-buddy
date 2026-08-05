@@ -36,13 +36,31 @@ const components: Components = {
     </blockquote>
   ),
   hr: () => <hr className="my-3 border-[var(--paper-line)]" />,
-  code: ({ className, children, ...props }) => {
-    const isBlock = /language-/.test(className || "");
-    if (isBlock) {
+  code: ({ className, children }) => {
+    const match = /language-(\w+)/.exec(className || "");
+    if (match) {
+      const codeText = String(children).replace(/\n$/, "");
       return (
-        <code className={`font-mono-note text-[13px] ${className ?? ""}`} {...props}>
-          {children}
-        </code>
+        <div className="mb-2 last:mb-0 overflow-hidden rounded-lg bg-[var(--ink)]">
+          <div className="flex items-center justify-between px-3 pt-2">
+            <span className="font-mono-note text-[10px] uppercase tracking-wider text-[var(--card-bg)]/50">
+              {match[1]}
+            </span>
+          </div>
+          <SyntaxHighlighter
+            language={match[1]}
+            style={vscDarkPlus}
+            customStyle={{
+              margin: 0,
+              padding: "0.5rem 0.75rem 0.75rem",
+              background: "transparent",
+              fontSize: "13px",
+            }}
+            codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }}
+          >
+            {codeText}
+          </SyntaxHighlighter>
+        </div>
       );
     }
     return (
@@ -51,11 +69,7 @@ const components: Components = {
       </code>
     );
   },
-  pre: ({ children }) => (
-    <pre className="mb-2 last:mb-0 overflow-x-auto rounded-lg bg-[var(--ink)] text-[var(--card-bg)] p-3">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <>{children}</>,
   table: ({ children }) => (
     <div className="mb-2 overflow-x-auto">
       <table className="border-collapse text-sm">{children}</table>

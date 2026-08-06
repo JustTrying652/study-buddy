@@ -231,9 +231,9 @@ export function ChatPanel({
     <div className="flex h-screen flex-1 flex-col min-w-0">
       <header className="flex items-center gap-2 border-b border-[var(--paper-line)] px-3 py-3 sm:px-6 sm:py-4">
         <button
-          onClick={onOpenSidebar}
-          className="shrink-0 rounded-md p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-black/[0.05] hover:text-[var(--ink)] sm:hidden"
-          aria-label="Open sessions"
+          onClick={onToggleSidebar}
+          className="shrink-0 rounded-md p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-black/[0.05] hover:text-[var(--ink)]"
+          aria-label="Toggle sessions"
         >
           ☰
         </button>

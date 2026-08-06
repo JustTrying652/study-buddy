@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 export type StudySession = {
   id: string;
   title: string;
+  titleIsCustom: boolean;
   messages: UIMessage[];
   updatedAt: number;
 };
@@ -11,6 +12,7 @@ export type StudySession = {
 type SessionRow = {
   id: string;
   title: string;
+  title_is_custom: boolean;
   messages: unknown;
   updated_at: string;
 };
@@ -19,6 +21,7 @@ function rowToSession(row: SessionRow): StudySession {
   return {
     id: row.id,
     title: row.title,
+    titleIsCustom: row.title_is_custom,
     messages: Array.isArray(row.messages) ? (row.messages as UIMessage[]) : [],
     updatedAt: new Date(row.updated_at).getTime(),
   };
@@ -28,7 +31,7 @@ export async function loadSessions(): Promise<StudySession[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("study_sessions")
-    .select("id, title, messages, updated_at")
+    .select("id, title, title_is_custom, messages, updated_at")
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -48,7 +51,7 @@ export async function createSession(): Promise<StudySession | null> {
   const { data, error } = await supabase
     .from("study_sessions")
     .insert({ user_id: user.id, title: "New chat", messages: [] })
-    .select("id, title, messages, updated_at")
+    .select("id, title, title_is_custom, messages, updated_at")
     .single();
 
   if (error || !data) {
@@ -71,6 +74,21 @@ export async function updateSessionMessages(
 
   if (error) {
     console.error("Could not save session", error);
+  }
+}
+
+export async function renameSession(id: string, title: string): Promise<void> {
+  const trimmed = title.trim();
+  if (!trimmed) return;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("study_sessions")
+    .update({ title: trimmed, title_is_custom: true })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Could not rename session", error);
   }
 }
 

@@ -91,7 +91,11 @@ const components: Components = {
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="text-[15px]">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={components}
+      >
         {text}
       </ReactMarkdown>
     </div>

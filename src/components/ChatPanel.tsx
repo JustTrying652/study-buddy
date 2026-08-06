@@ -143,12 +143,12 @@ export function ChatPanel({
   sessionId,
   initialMessages,
   onMessagesChange,
-  onOpenSidebar,
+  onToggleSidebar,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   onMessagesChange: (messages: UIMessage[]) => void;
-  onOpenSidebar: () => void;
+  onToggleSidebar: () => void;
 }) {
   // Capture the initial messages once — after that, useChat owns the
   // conversation and we never want a changing prop to re-seed it.

@@ -11,16 +11,33 @@ import {
   createSession,
   updateSessionMessages,
   deleteSession,
+  renameSession,
   titleFromMessages,
 } from "@/lib/sessions";
+
+// Keep in sync with Tailwind's default `sm` breakpoint (640px) used
+// throughout the sidebar's responsive classes.
+function isMobileViewport() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+}
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [activeId, setActiveId] = useState<string>("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Defaults to open (matches desktop, where the sidebar is normally
+  // visible); a mount-time effect below closes it if we're actually on
+  // a small screen, so it doesn't cover the chat on first load there.
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount check, not reacting to changing state */
+    if (isMobileViewport()) setSidebarOpen(false);
+  }, []);
+
+  // Sessions are proxy-gated, so a user always exists here — this just
+  // fetches the email for display and wires up sign-out.
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
@@ -66,15 +83,21 @@ export default function Home() {
 
   const handleActiveMessagesChange = useCallback(
     (messages: UIMessage[]) => {
-      const title = titleFromMessages(messages);
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSessionId
-            ? { ...s, messages, title: title ?? s.title, updatedAt: Date.now() }
-            : s
-        )
-      );
-      updateSessionMessages(activeSessionId, messages, title ?? "New chat");
+      setSessions((prev) => {
+        const next = prev.map((s) => {
+          if (s.id !== activeSessionId) return s;
+          // Respect a manual rename — don't let the auto-title-from-first-
+          // message logic silently overwrite it on the next reply.
+          const title = s.titleIsCustom ? s.title : (titleFromMessages(messages) ?? s.title);
+          return { ...s, messages, title, updatedAt: Date.now() };
+        });
+
+        const updated = next.find((s) => s.id === activeSessionId);
+        if (updated) {
+          updateSessionMessages(activeSessionId, messages, updated.title);
+        }
+        return next;
+      });
     },
     [activeSessionId]
   );
@@ -84,12 +107,12 @@ export default function Home() {
     if (!fresh) return;
     setSessions((prev) => [fresh, ...prev]);
     setActiveId(fresh.id);
-    setSidebarOpen(false);
+    if (isMobileViewport()) setSidebarOpen(false);
   }
 
   function handleSelect(id: string) {
     setActiveId(id);
-    setSidebarOpen(false);
+    if (isMobileViewport()) setSidebarOpen(false);
   }
 
   async function handleDelete(id: string) {
@@ -105,6 +128,13 @@ export default function Home() {
     }
 
     deleteSession(id);
+  }
+
+  function handleRename(id: string, title: string) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: trimmed, titleIsCustom: true } : s)));
+    renameSession(id, trimmed);
   }
 
   if (loading || !activeSession) {
@@ -123,6 +153,7 @@ export default function Home() {
         onSelect={handleSelect}
         onNew={handleNew}
         onDelete={handleDelete}
+        onRename={handleRename}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         userEmail={userEmail}
@@ -133,7 +164,7 @@ export default function Home() {
         sessionId={activeSession.id}
         initialMessages={activeSession.messages}
         onMessagesChange={handleActiveMessagesChange}
-        onOpenSidebar={() => setSidebarOpen(true)}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
       />
     </div>
   );

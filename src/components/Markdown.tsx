@@ -88,6 +88,15 @@ const components: Components = {
   ),
 };
 
+// Some models write LaTeX as \( ... \) / \[ ... \] instead of the $ / $$
+// convention our renderer expects. Normalize the common case defensively,
+// on top of asking for $ delimiters in the system prompt.
+function normalizeMathDelimiters(text: string): string {
+  return text
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, expr: string) => `$$${expr}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, expr: string) => `$${expr}$`);
+}
+
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="text-[15px]">
@@ -96,7 +105,7 @@ export function Markdown({ text }: { text: string }) {
         rehypePlugins={[rehypeKatex]}
         components={components}
       >
-        {text}
+        {normalizeMathDelimiters(text)}
       </ReactMarkdown>
     </div>
   );

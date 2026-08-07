@@ -88,6 +88,15 @@ export function Sidebar({
             </button>
           </div>
 
+          <div className="px-3 pb-1">
+            <Link
+              href="/review"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--ink-soft)] transition-colors hover:bg-black/[0.04] hover:text-[var(--accent)]"
+            >
+              <span aria-hidden="true">🗂️</span> Review flashcards
+            </Link>
+          </div>
+
           <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-4">
             {ordered.length === 0 && (
               <p className="px-2 py-3 text-xs text-[var(--ink-soft)]">

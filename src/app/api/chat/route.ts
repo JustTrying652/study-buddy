@@ -176,6 +176,18 @@ export async function POST(req: Request) {
             back: z.string().describe("The definition or answer side of the card"),
           }),
           execute: async ({ front, back }: { front: string; back: string }) => {
+            // Persist to the dedicated flashcards table for review mode,
+            // independent of chat history. Best-effort: a failure here
+            // shouldn't break the chat response itself.
+            const { error: insertError } = await supabase.from("flashcards").insert({
+              user_id: user.id,
+              session_id: sessionId,
+              front,
+              back,
+            });
+            if (insertError) {
+              console.error("Could not save flashcard for review mode:", insertError);
+            }
             return { front, back, savedAt: Date.now() };
           },
         },

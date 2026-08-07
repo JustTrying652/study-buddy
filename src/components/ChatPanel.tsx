@@ -157,7 +157,7 @@ export function ChatPanel({
   const { messages, sendMessage, status, error, clearError, regenerate } = useChat({
     id: sessionId,
     messages: initial,
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({ api: "/api/chat", body: { sessionId } }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
   const [input, setInput] = useState("");

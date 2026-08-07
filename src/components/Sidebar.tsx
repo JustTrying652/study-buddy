@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { StudySession } from "@/lib/sessions";
 
 export function Sidebar({

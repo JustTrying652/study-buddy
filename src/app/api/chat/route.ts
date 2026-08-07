@@ -147,9 +147,11 @@ export async function POST(req: Request) {
   }
 
   let messages: UIMessage[];
+  let sessionId: string | null;
   try {
     const body = await req.json();
     messages = body.messages;
+    sessionId = typeof body.sessionId === "string" ? body.sessionId : null;
   } catch {
     return jsonError("Couldn't read the request body.", 400);
   }

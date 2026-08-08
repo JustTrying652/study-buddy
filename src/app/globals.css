@@ -11,6 +11,23 @@
   --highlight: #f2cf5b;
   --mint: #86ad93;
   --card-bg: #fffdf7;
+  /* Code blocks stay a consistent dark "window" regardless of theme,
+     same look they've always had — not tied to --ink so it doesn't
+     flip to a light background in dark mode. */
+  --code-bg: #2b2a28;
+}
+
+html[data-theme="dark"] {
+  --paper: #1c1a17;
+  --paper-line: #38342c;
+  --margin-line: #a8655a;
+  --ink: #ece7dc;
+  --ink-soft: #a39c8c;
+  --accent: #5b9bd1;
+  --accent-soft: #2c4a63;
+  --highlight: #d9b54a;
+  --mint: #6fa07d;
+  --card-bg: #262320;
 }
 
 * {

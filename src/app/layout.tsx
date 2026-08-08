@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Caveat, IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
-
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],

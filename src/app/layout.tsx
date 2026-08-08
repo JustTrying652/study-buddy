@@ -42,7 +42,10 @@ export default function RootLayout({
       lang="en"
       className={`${fraunces.variable} ${caveat.variable} ${plexMono.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {children}
+      </body>
     </html>
   );
 }

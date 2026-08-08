@@ -164,8 +164,16 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  // Defaults to "light" to match server-rendered markup; corrected on mount
+  // to whatever the blocking init script in layout.tsx already applied.
+  const [theme, setThemeState] = useState<Theme>("light");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from DOM state set by the pre-hydration script */
+    setThemeState(getCurrentTheme());
+  }, []);
 
   // Keep the latest messages/callback in refs so the effect below can
   // read them without needing them as dependencies — avoids an update loop.

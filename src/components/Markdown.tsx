@@ -44,7 +44,7 @@ const components: Components = {
     if (match) {
       const codeText = String(children).replace(/\n$/, "");
       return (
-        <div className="mb-2 last:mb-0 overflow-hidden rounded-lg bg-[var(--ink)]">
+        <div className="mb-2 last:mb-0 overflow-hidden rounded-lg bg-[var(--code-bg)]">
           <div className="flex items-center justify-between px-3 pt-2">
             <span className="font-mono-note text-[10px] uppercase tracking-wider text-[var(--card-bg)]/50">
               {match[1]}

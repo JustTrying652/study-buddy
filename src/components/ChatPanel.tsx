@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { UIMessage } from "ai";
 import { Markdown } from "@/components/Markdown";
+import { getCurrentTheme, toggleTheme, type Theme } from "@/lib/theme";
 
 type FlashcardOutput = { front: string; back: string };
 type QuizOutput = { question: string; options: string[]; correctIndex: number };

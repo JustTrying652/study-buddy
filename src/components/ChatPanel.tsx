@@ -252,6 +252,15 @@ export function ChatPanel({
             Explains concepts, quizzes you, and remembers where you left off.
           </p>
         </div>
+
+        <button
+          onClick={() => setThemeState(toggleTheme())}
+          className="ml-auto shrink-0 rounded-md p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-black/[0.05] hover:text-[var(--ink)]"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
